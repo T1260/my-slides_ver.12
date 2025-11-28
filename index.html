@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>スライド ver.9 Rebuild</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #000;
+    }
+    #slide-container {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    img, iframe {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+    .btn {
+      position: absolute;
+      padding: 12px 20px;
+      background: rgba(255,255,255,0.8);
+      border-radius: 10px;
+      font-size: 18px;
+      cursor: pointer;
+      user-select: none;
+    }
+    #prevBtn { left: 20px; bottom: 20px; }
+    #nextBtn { right: 20px; bottom: 20px; }
+    #choiceA { left: 20px; bottom: 20px; }
+    #choiceB { right: 20px; bottom: 20px; }
+    #closeVideo { top: 20px; right: 20px; background: #fff; }
+  </style>
+</head>
+<body>
+  <div id="slide-container"></div>
+  
+  <div id="prevBtn" class="btn">前へ</div>
+  <div id="nextBtn" class="btn">次へ</div>
+  
+  <div id="choiceA" class="btn" style="display:none;">現実音へ</div>
+  <div id="choiceB" class="btn" style="display:none;">非現実音へ</div>
+  
+  <div id="closeVideo" class="btn" style="display:none;">閉じる</div>
+
+<script>
+let current = 0;
+let origin = "main"; // A/B戻り先管理
+
+const slides = [
+  "s1.JPG",
+  "s2.JPG",
+  "s3.JPG", // ←ここで分岐ボタン表示
+  "s4.JPG",
+  "s5.JPG"
+];
+
+const A = ["a1.JPG", "a2.JPG"];
+const B = ["b1.JPG", "b2.JPG", "b3.JPG", "b4.JPG"];
+
+// 動画リンク
+const videosA = [
+  "https://www.youtube.com/embed/XXXXXXXXX",
+  "https://www.youtube.com/embed/YYYYYYYYY"
+];
+const videosB = [
+  "https://www.youtube.com/embed/ZZZZZZZZZ"
+];
+
+const container = document.getElementById("slide-container");
+const prevBtn = document.getElementById("prevBtn");
+const nextBtn = document.getElementById("nextBtn");
+const choiceA = document.getElementById("choiceA");
+const choiceB = document.getElementById("choiceB");
+const closeVideo = document.getElementById("closeVideo");
+
+function showSlide() {
+  choiceA.style.display = "none";
+  choiceB.style.display = "none";
+  closeVideo.style.display = "none";
+
+  // 分岐スライド（s3）なら選択肢表示
+  if (slides[current] === "s3.JPG" && origin === "main") {
+    choiceA.style.display = "block";
+    choiceB.style.display = "block";
+  }
+
+  container.innerHTML = `<img src="${slides[current]}" />`;
+}
+
+choiceA.onclick = () => {
+  origin = "A";
+  current = 0;
+  loadBranch(A, videosA);
+};
+
+choiceB.onclick = () => {
+  origin = "B";
+  current = 0;
+  loadBranch(B, videosB);
+};
+
+function loadBranch(list, videos) {
+  let index = 0;
+
+  function render() {
+    choiceA.style.display = "none";
+    choiceB.style.display = "none";
+    closeVideo.style.display = "none";
+
+    // 画像表示
+    container.innerHTML = `<img src="${list[index]}" />`;
+  }
+
+  render();
+
+  nextBtn.onclick = () => {
+    if (index < list.length - 1) {
+      index++;
+      render();
+    } else {
+      // 動画ページ
+      showVideo(videos, () => {
+        current = 3; // s4へ復帰
+        showSlide();
+      });
+    }
+  };
+
+  prevBtn.onclick = () => {
+    if (index > 0) {
+      index--;
+      render();
+    } else {
+      // s3へ戻る
+      current = 2;
+      origin = "main";
+      showSlide();
+    }
+  };
+}
+
+function showVideo(list, onFinish) {
+  let v = 0;
+
+  function renderV() {
+    container.innerHTML = `
+      <iframe width="100%" height="100%" src="${list[v]}" allowfullscreen></iframe>
+    `;
+  }
+
+  closeVideo.style.display = "block";
+  renderV();
+
+  nextBtn.onclick = () => {
+    if (v < list.length - 1) {
+      v++;
+      renderV();
+    } else {
+      closeVideo.style.display = "none";
+      onFinish();
+    }
+  };
+
+  prevBtn.onclick = () => {
+    if (v > 0) {
+      v--;
+      renderV();
+    }
+  };
+
+  closeVideo.onclick = () => {
+    closeVideo.style.display = "none";
+    onFinish();
+  };
+}
+
+prevBtn.onclick = () => {
+  if (current > 0) {
+    current--;
+    showSlide();
+  }
+};
+
+nextBtn.onclick = () => {
+  if (current < slides.length - 1) {
+    current++;
+    showSlide();
+  }
+};
+
+showSlide();
+</script>
+</body>
+</html>
