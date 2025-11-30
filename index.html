@@ -58,20 +58,27 @@ const slides = [
   "s1.JPG",
   "s2.JPG",
   "s3.JPG", // ←ここで分岐ボタン表示
-  "s4.JPG",
-  "s5.JPG"
+  "s4.JPG"
 ];
 
-const A = ["a1.JPG", "a2.JPG"];
-const B = ["b1.JPG", "b2.JPG", "b3.JPG", "b4.JPG"];
-
-// 動画リンク
-const videosA = [
-  "https://www.youtube.com/embed/XXXXXXXXX",
-  "https://www.youtube.com/embed/YYYYYYYYY"
+// ブランチ定義：画像と（任意の）動画リストを持つ
+const A = [
+  { img: "a1.JPG", videos: [
+      "https://www.youtube.com/embed/NQKSIqytvOo",
+      "https://www.youtube.com/embed/wM1E_WQksVs"
+    ]
+  },
+  { img: "a2.JPG" }
 ];
-const videosB = [
-  "https://www.youtube.com/embed/ZZZZZZZZZ"
+
+const B = [
+  { img: "b1.JPG", videos: [
+      "https://www.youtube.com/embed/hU4h9NmlcmQ"
+    ]
+  },
+  { img: "b2.JPG" },
+  { img: "b3.JPG" },
+  { img: "b4.JPG" }
 ];
 
 const container = document.getElementById("slide-container");
@@ -88,49 +95,64 @@ function showSlide() {
 
   // 分岐スライド（s3）なら選択肢表示
   if (slides[current] === "s3.JPG" && origin === "main") {
-    choiceA.style.display = "block";
-    choiceB.style.display = "block";
+    choiceA.style.display = "block"; // 左ボタン
+    choiceB.style.display = "block"; // 右ボタン
   }
 
   container.innerHTML = `<img src="${slides[current]}" />`;
 }
 
+// ボタンの割り当て（現実音はB、非現実音はA）
+choiceA.textContent = "非現実音へ"; // 左: 非現実音 -> A
+choiceB.textContent = "現実音へ";   // 右: 現実音 -> B
+
 choiceA.onclick = () => {
-  origin = "A";
-  current = 0;
-  loadBranch(A, videosA);
+  origin = "A"; // 非現実音 -> A
+  loadBranch(A);
 };
 
 choiceB.onclick = () => {
-  origin = "B";
-  current = 0;
-  loadBranch(B, videosB);
+  origin = "B"; // 現実音 -> B
+  loadBranch(B);
 };
 
-function loadBranch(list, videos) {
+function loadBranch(list) {
   let index = 0;
+  // 初期レンダ
+  render();
 
   function render() {
     choiceA.style.display = "none";
     choiceB.style.display = "none";
     closeVideo.style.display = "none";
 
-    // 画像表示
-    container.innerHTML = `<img src="${list[index]}" />`;
+    const slide = list[index];
+    container.innerHTML = `<img src="${slide.img}" />`;
+
+    // そのスライドに動画がある場合、自動的に動画プレーヤーを開く
+    if (slide.videos && slide.videos.length > 0) {
+      // 小タイムアウトで画像が先に描画されるようにしてから動画を開く
+      setTimeout(() => {
+        showVideo(slide.videos, () => {
+          // 動画が全部終わるか閉じられた後は画像に戻る（何もしない）
+          container.innerHTML = `<img src="${slide.img}" />`;
+        });
+      }, 200);
+    }
   }
 
-  render();
-
+  // next: 次スライドまたは s4 へ
   nextBtn.onclick = () => {
     if (index < list.length - 1) {
       index++;
       render();
     } else {
-      // 動画ページ
-      showVideo(videos, () => {
-        current = 3; // s4へ復帰
-        showSlide();
-      });
+      // ブランチ終了 → s4 へ復帰
+      current = slides.indexOf("s4.JPG");
+      origin = "main";
+      // クリック後は通常のショースライド動作に戻す
+      bindMainNav();
+      showSlide();
     }
   };
 
@@ -139,9 +161,10 @@ function loadBranch(list, videos) {
       index--;
       render();
     } else {
-      // s3へ戻る
-      current = 2;
+      // 先頭から戻ると分岐元 s3 へ
+      current = slides.indexOf("s3.JPG");
       origin = "main";
+      bindMainNav();
       showSlide();
     }
   };
@@ -152,13 +175,14 @@ function showVideo(list, onFinish) {
 
   function renderV() {
     container.innerHTML = `
-      <iframe width="100%" height="100%" src="${list[v]}" allowfullscreen></iframe>
+      <iframe width="100%" height="100%" src="${list[v]}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
     `;
   }
 
   closeVideo.style.display = "block";
   renderV();
 
+  // 動画内での次へ/前へを扱う（プレーヤー単体での切替）
   nextBtn.onclick = () => {
     if (v < list.length - 1) {
       v++;
@@ -182,21 +206,27 @@ function showVideo(list, onFinish) {
   };
 }
 
-prevBtn.onclick = () => {
-  if (current > 0) {
-    current--;
-    showSlide();
-  }
-};
+// メインナビ (s1..s4) 用に prev/next をバインド
+function bindMainNav() {
+  prevBtn.onclick = () => {
+    if (current > 0) {
+      current--;
+      showSlide();
+    }
+  };
 
-nextBtn.onclick = () => {
-  if (current < slides.length - 1) {
-    current++;
-    showSlide();
-  }
-};
+  nextBtn.onclick = () => {
+    if (current < slides.length - 1) {
+      current++;
+      showSlide();
+    }
+  };
+}
 
+// 最初はメインナビを有効にして表示
+bindMainNav();
 showSlide();
 </script>
 </body>
 </html>
+
