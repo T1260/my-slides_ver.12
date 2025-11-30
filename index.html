@@ -102,8 +102,8 @@ function showSlide() {
   container.innerHTML = `<img src="${slides[current]}" />`;
 }
 
-choiceA.textContent = "非現実音へ"; // A
-choiceB.textContent = "現実音へ";   // B
+choiceA.textContent = "非現実音へ";
+choiceB.textContent = "現実音へ";
 
 choiceA.onclick = () => { origin = "A"; loadBranch(A); };
 choiceB.onclick = () => { origin = "B"; loadBranch(B); };
@@ -113,11 +113,17 @@ choiceB.onclick = () => { origin = "B"; loadBranch(B); };
 // ========================
 function loadBranch(list) {
   let index = 0;
+
+  // ← 追加：現在の next/prev を保存（後で復帰用）
+  let branchNext = null;
+  let branchPrev = null;
+
   render();
 
   function render() {
     const data = list[index];
     container.innerHTML = `<img src="${data.img}" />`;
+
     choiceA.style.display = "none";
     choiceB.style.display = "none";
     closeVideo.style.display = "none";
@@ -126,15 +132,15 @@ function loadBranch(list) {
       setTimeout(() => {
         showVideo(data.videos, () => {
           container.innerHTML = `<img src="${data.img}" />`;
-        });
+        }, restoreBranchHandlers);
       }, 150);
     }
   }
 
-  nextBtn.onclick = () => {
+  // A/Bブランチ内の next / prev の定義
+  branchNext = () => {
     const data = list[index];
-
-    if (data.videos && data.videos.length > 0) return; // 動画再生中は無効（動画側制御）
+    if (data.videos && data.videos.length > 0) return;
 
     if (index < list.length - 1) {
       index++;
@@ -147,7 +153,7 @@ function loadBranch(list) {
     }
   };
 
-  prevBtn.onclick = () => {
+  branchPrev = () => {
     const data = list[index];
     if (data.videos && data.videos.length > 0) return;
 
@@ -161,12 +167,22 @@ function loadBranch(list) {
       showSlide();
     }
   };
+
+  // 実際のボタンに割り当てる
+  nextBtn.onclick = branchNext;
+  prevBtn.onclick = branchPrev;
+
+  // 動画終了後に復帰させる関数
+  function restoreBranchHandlers() {
+    nextBtn.onclick = branchNext;
+    prevBtn.onclick = branchPrev;
+  }
 }
 
 // ========================
 // 動画モード
 // ========================
-function showVideo(list, onFinish) {
+function showVideo(list, onFinish, onRestoreBranch) {
   let v = 0;
   closeVideo.style.display = "block";
   renderVideo();
@@ -177,7 +193,6 @@ function showVideo(list, onFinish) {
     `;
   }
 
-  // ---- 動画中の next ----
   nextBtn.onclick = () => {
     if (v < list.length - 1) {
       v++;
@@ -185,11 +200,10 @@ function showVideo(list, onFinish) {
     } else {
       closeVideo.style.display = "none";
       onFinish();
-      bindBranchNav(); // 復帰
+      onRestoreBranch();
     }
   };
 
-  // ---- 動画中の prev ----
   prevBtn.onclick = () => {
     if (v > 0) {
       v--;
@@ -197,23 +211,15 @@ function showVideo(list, onFinish) {
     }
   };
 
-  // ---- 閉じる ----
   closeVideo.onclick = () => {
     closeVideo.style.display = "none";
     onFinish();
-    bindBranchNav();
+    onRestoreBranch();
   };
 }
 
 // ========================
-// ブランチ復帰時：next/prev を無効化しないように再定義
-// ========================
-function bindBranchNav() {
-  // 何もしない → loadBranch の next/prev が復帰する
-}
-
-// ========================
-// メイン遷移用の next/prev
+// メイン遷移用
 // ========================
 function bindMainNav() {
   prevBtn.onclick = () => {
@@ -234,6 +240,7 @@ function bindMainNav() {
 bindMainNav();
 showSlide();
 </script>
+
 </body>
 </html>
 
