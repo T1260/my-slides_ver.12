@@ -51,17 +51,14 @@
   <div id="closeVideo" class="btn" style="display:none;">閉じる</div>
 
 <script>
+// ========================
+// 変数と基本データ定義
+// ========================
 let current = 0;
-let origin = "main"; // A/B戻り先管理
+let origin = "main";
 
-const slides = [
-  "s1.JPG",
-  "s2.JPG",
-  "s3.JPG", // ←ここで分岐ボタン表示
-  "s4.JPG"
-];
+const slides = ["s1.JPG", "s2.JPG", "s3.JPG", "s4.JPG"];
 
-// ブランチ定義：画像と（任意の）動画リストを持つ
 const A = [
   { img: "a1.JPG", videos: [
       "https://www.youtube.com/embed/NQKSIqytvOo",
@@ -81,6 +78,7 @@ const B = [
   { img: "b4.JPG" }
 ];
 
+// DOM 取得
 const container = document.getElementById("slide-container");
 const prevBtn = document.getElementById("prevBtn");
 const nextBtn = document.getElementById("nextBtn");
@@ -88,80 +86,75 @@ const choiceA = document.getElementById("choiceA");
 const choiceB = document.getElementById("choiceB");
 const closeVideo = document.getElementById("closeVideo");
 
+// ========================
+// メインスライド表示
+// ========================
 function showSlide() {
   choiceA.style.display = "none";
   choiceB.style.display = "none";
   closeVideo.style.display = "none";
 
-  // 分岐スライド（s3）なら選択肢表示
   if (slides[current] === "s3.JPG" && origin === "main") {
-    choiceA.style.display = "block"; // 左ボタン
-    choiceB.style.display = "block"; // 右ボタン
+    choiceA.style.display = "block";
+    choiceB.style.display = "block";
   }
 
   container.innerHTML = `<img src="${slides[current]}" />`;
 }
 
-// ボタンの割り当て（現実音はB、非現実音はA）
-choiceA.textContent = "非現実音へ"; // 左: 非現実音 -> A
-choiceB.textContent = "現実音へ";   // 右: 現実音 -> B
+choiceA.textContent = "非現実音へ"; // A
+choiceB.textContent = "現実音へ";   // B
 
-choiceA.onclick = () => {
-  origin = "A"; // 非現実音 -> A
-  loadBranch(A);
-};
+choiceA.onclick = () => { origin = "A"; loadBranch(A); };
+choiceB.onclick = () => { origin = "B"; loadBranch(B); };
 
-choiceB.onclick = () => {
-  origin = "B"; // 現実音 -> B
-  loadBranch(B);
-};
-
+// ========================
+// ブランチ処理
+// ========================
 function loadBranch(list) {
   let index = 0;
-  // 初期レンダ
   render();
 
   function render() {
+    const data = list[index];
+    container.innerHTML = `<img src="${data.img}" />`;
     choiceA.style.display = "none";
     choiceB.style.display = "none";
     closeVideo.style.display = "none";
 
-    const slide = list[index];
-    container.innerHTML = `<img src="${slide.img}" />`;
-
-    // そのスライドに動画がある場合、自動的に動画プレーヤーを開く
-    if (slide.videos && slide.videos.length > 0) {
-      // 小タイムアウトで画像が先に描画されるようにしてから動画を開く
+    if (data.videos && data.videos.length > 0) {
       setTimeout(() => {
-        showVideo(slide.videos, () => {
-          // 動画が全部終わるか閉じられた後は画像に戻る（何もしない）
-          container.innerHTML = `<img src="${slide.img}" />`;
+        showVideo(data.videos, () => {
+          container.innerHTML = `<img src="${data.img}" />`;
         });
-      }, 200);
+      }, 150);
     }
   }
 
-  // next: 次スライドまたは s4 へ
   nextBtn.onclick = () => {
+    const data = list[index];
+
+    if (data.videos && data.videos.length > 0) return; // 動画再生中は無効（動画側制御）
+
     if (index < list.length - 1) {
       index++;
       render();
     } else {
-      // ブランチ終了 → s4 へ復帰
       current = slides.indexOf("s4.JPG");
       origin = "main";
-      // クリック後は通常のショースライド動作に戻す
       bindMainNav();
       showSlide();
     }
   };
 
   prevBtn.onclick = () => {
+    const data = list[index];
+    if (data.videos && data.videos.length > 0) return;
+
     if (index > 0) {
       index--;
       render();
     } else {
-      // 先頭から戻ると分岐元 s3 へ
       current = slides.indexOf("s3.JPG");
       origin = "main";
       bindMainNav();
@@ -170,43 +163,58 @@ function loadBranch(list) {
   };
 }
 
+// ========================
+// 動画モード
+// ========================
 function showVideo(list, onFinish) {
   let v = 0;
+  closeVideo.style.display = "block";
+  renderVideo();
 
-  function renderV() {
+  function renderVideo() {
     container.innerHTML = `
       <iframe width="100%" height="100%" src="${list[v]}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
     `;
   }
 
-  closeVideo.style.display = "block";
-  renderV();
-
-  // 動画内での次へ/前へを扱う（プレーヤー単体での切替）
+  // ---- 動画中の next ----
   nextBtn.onclick = () => {
     if (v < list.length - 1) {
       v++;
-      renderV();
+      renderVideo();
     } else {
       closeVideo.style.display = "none";
       onFinish();
+      bindBranchNav(); // 復帰
     }
   };
 
+  // ---- 動画中の prev ----
   prevBtn.onclick = () => {
     if (v > 0) {
       v--;
-      renderV();
+      renderVideo();
     }
   };
 
+  // ---- 閉じる ----
   closeVideo.onclick = () => {
     closeVideo.style.display = "none";
     onFinish();
+    bindBranchNav();
   };
 }
 
-// メインナビ (s1..s4) 用に prev/next をバインド
+// ========================
+// ブランチ復帰時：next/prev を無効化しないように再定義
+// ========================
+function bindBranchNav() {
+  // 何もしない → loadBranch の next/prev が復帰する
+}
+
+// ========================
+// メイン遷移用の next/prev
+// ========================
 function bindMainNav() {
   prevBtn.onclick = () => {
     if (current > 0) {
@@ -223,10 +231,10 @@ function bindMainNav() {
   };
 }
 
-// 最初はメインナビを有効にして表示
 bindMainNav();
 showSlide();
 </script>
 </body>
 </html>
+
 
